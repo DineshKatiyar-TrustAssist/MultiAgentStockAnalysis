@@ -181,7 +181,7 @@ def analyze_stock(ticker: str, chat_instance=None):
         return f"Agent Error: {str(e)}"
 
 
-# --- 6. CLI MODE (Original) ---
+# --- 6. Streamlit UI MODE (Original) ---
 if __name__ == "__main__":
     print("\n🤖 AI Agent Online. Internet check: " + ("PASSED" if "yfinance" in sys.modules else "FAILED"))
     chat = initialize_agent()
