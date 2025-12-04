@@ -1,8 +1,25 @@
 #!/usr/bin/env python
 # coding: utf-8
 """
-Streamlit UI for Multi-Agent Stock Analyst
-Run with: streamlit run app.py
+Streamlit Web UI for Multi-Agent Stock Analyst
+
+This module provides a web-based user interface for the Multi-Agent Stock Analyst.
+It imports the analysis functions from the main module and provides an interactive
+Streamlit interface for stock analysis.
+
+Usage:
+    streamlit run app.py
+
+Features:
+    - Interactive stock symbol input
+    - Real-time AI-powered analysis
+    - Detailed agent data visualization
+    - Clean, responsive UI design
+
+Requirements:
+    - Streamlit must be installed (pip install streamlit)
+    - GOOGLE_API_KEY must be set in .env file
+    - All dependencies from requirements.txt
 """
 
 import streamlit as st
@@ -11,6 +28,7 @@ import sys
 from pathlib import Path
 
 # Import the main module (handles filename with hyphens)
+# This approach is necessary because Python module names cannot contain hyphens
 module_path = Path(__file__).parent / "multi-agent-stock-analyst.py"
 spec = importlib.util.spec_from_file_location("stock_analyst", module_path)
 stock_analyst = importlib.util.module_from_spec(spec)
@@ -25,16 +43,18 @@ from stock_analyst import (
     get_fundamental_health
 )
 
+# Configure Streamlit page
 st.set_page_config(
     page_title="Multi-Agent Stock Analyst",
     page_icon="📈",
     layout="wide"
 )
 
+# Page header
 st.title("🤖 Multi-Agent Stock Analyst")
 st.markdown("**AI-Powered Stock Analysis using ML, Technical, and Fundamental Analysis**")
 
-# Initialize chat in session state
+# Initialize AI agent in session state (persists across reruns)
 if 'chat' not in st.session_state:
     with st.spinner("Initializing AI Agent..."):
         st.session_state.chat = initialize_agent()
@@ -59,26 +79,29 @@ with st.sidebar:
     4. **AI Manager**: Combines all insights for recommendation
     """)
 
-# Main content area
+# Main content area - handle stock analysis
 if analyze_button and ticker_input:
     ticker = ticker_input.upper().strip()
     
     if not ticker:
         st.warning("⚠️ Please enter a stock symbol")
     else:
+        # Perform analysis with loading indicator
         with st.spinner(f"🔍 Analyzing {ticker}... This may take a moment."):
             try:
+                # Get AI-generated recommendation
                 recommendation = analyze_stock(ticker, st.session_state.chat)
                 
-                # Display results
+                # Display main recommendation
                 st.markdown("---")
                 st.subheader(f"📊 Analysis for {ticker}")
                 st.markdown(recommendation)
                 
-                # Display raw data from agents
+                # Display detailed agent data in expandable section
                 with st.expander("📈 View Detailed Agent Data"):
                     col1, col2, col3 = st.columns(3)
                     
+                    # ML Agent data
                     with col1:
                         st.markdown("### 🤖 ML Agent")
                         ml_data = get_ml_prediction(ticker)
@@ -87,6 +110,7 @@ if analyze_button and ticker_input:
                         else:
                             st.json(ml_data)
                     
+                    # Technical Agent data
                     with col2:
                         st.markdown("### 📉 Technical Agent")
                         tech_data = get_technical_analysis(ticker)
@@ -95,6 +119,7 @@ if analyze_button and ticker_input:
                         else:
                             st.json(tech_data)
                     
+                    # Fundamental Agent data
                     with col3:
                         st.markdown("### 💼 Fundamental Agent")
                         fund_data = get_fundamental_health(ticker)

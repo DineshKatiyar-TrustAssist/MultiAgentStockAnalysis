@@ -1,15 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
+"""
+Multi-Agent Stock Analyst
 
-# In[ ]:
+A comprehensive stock analysis system that combines:
+- Machine Learning predictions using Random Forest
+- Technical analysis (RSI, trends)
+- Fundamental analysis (PE ratio, market cap)
+- AI-powered recommendations via Google Gemini
 
+The system uses a multi-agent architecture where specialized agents work together
+to provide comprehensive trading recommendations.
 
-# --- CELL: ROBUST MULTI-AGENT STOCK ANALYST ---
+Usage:
+    CLI Mode: python multi-agent-stock-analyst.py
+    UI Mode: streamlit run app.py
+
+Requirements:
+    - GOOGLE_API_KEY in .env file
+    - Internet connection for data fetching
+"""
+
 import os
 import sys
 import subprocess
 
-# 1. AUTO-INSTALL LIBRARIES (If missing in Kaggle)
+# Auto-install yfinance if missing
 try:
     import yfinance
 except ImportError:
@@ -25,10 +41,10 @@ from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
-# 2. SECURE API SETUP
 # Load environment variables from .env file
 load_dotenv()
 
+# Configure Google Generative AI with API key from environment
 try:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -40,11 +56,32 @@ except Exception as e:
     print(f"   Error: {str(e)}")
 
 
-# --- 2. ROBUST ML AGENT  ---
-def get_ml_prediction(ticker: str):
+# ============================================================================
+# AGENT FUNCTIONS
+# ============================================================================
+
+def get_ml_prediction(ticker: str) -> dict:
     """
-    Predicts stock price using Random Forest. 
-    Now includes error handling for empty data and NaNs.
+    ML Agent: Predicts next-day stock price using Random Forest Regressor.
+    
+    This agent fetches historical stock data, engineers features (SMA indicators),
+    trains a Random Forest model, and predicts the next trading day's closing price.
+    
+    Args:
+        ticker (str): Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+    
+    Returns:
+        dict: Dictionary containing:
+            - current_price (float): Current closing price
+            - ml_predicted_price (float): Predicted next-day price
+            - predicted_direction (str): "UP 📈" or "DOWN 📉"
+            - expected_change_pct (float): Expected percentage change
+            - model_used (str): Name of the ML model
+            OR
+            - error (str): Error message if prediction fails
+    
+    Raises:
+        Exception: Handled internally, returns error dict instead
     """
     try:
         print(f"🤖 Quant Agent: Fetching data for {ticker}...")
@@ -101,12 +138,30 @@ def get_ml_prediction(ticker: str):
         }
 
     except Exception as e:
-        # This prints the ACTUAL error to your console so you can see it
         print(f"❌ ML CRASH DETECTED: {str(e)}")
         return {"error": f"ML Analysis failed internally: {str(e)}"}
 
-# --- 3. TECHNICAL AGENT ---
-def get_technical_analysis(ticker: str):
+
+def get_technical_analysis(ticker: str) -> dict:
+    """
+    Technical Agent: Performs technical analysis on stock data.
+    
+    Calculates Relative Strength Index (RSI) and determines market trend
+    based on price movements over the last 6 months.
+    
+    Args:
+        ticker (str): Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+    
+    Returns:
+        dict: Dictionary containing:
+            - RSI (float): Relative Strength Index (0-100)
+            - Trend (str): "Bullish" or "Bearish"
+            OR
+            - error (str): Error message if analysis fails
+    
+    Raises:
+        Exception: Handled internally, returns error dict instead
+    """
     try:
         stock = yf.Ticker(ticker)
         df = stock.history(period="6mo")
@@ -126,8 +181,28 @@ def get_technical_analysis(ticker: str):
     except Exception as e:
         return {"error": str(e)}
 
-# --- 4. FUNDAMENTAL AGENT ---
-def get_fundamental_health(ticker: str):
+
+def get_fundamental_health(ticker: str) -> dict:
+    """
+    Fundamental Agent: Analyzes fundamental financial metrics.
+    
+    Fetches fundamental data including PE ratio, market capitalization,
+    and analyst recommendations from Yahoo Finance.
+    
+    Args:
+        ticker (str): Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+    
+    Returns:
+        dict: Dictionary containing:
+            - PE_Ratio (float or str): Price-to-Earnings ratio or 'N/A'
+            - Market_Cap (int or str): Market capitalization or 'N/A'
+            - Analyst_Rec (str): Analyst recommendation (uppercase)
+            OR
+            - error (str): Error message if analysis fails
+    
+    Raises:
+        Exception: Handled internally, returns error dict instead
+    """
     try:
         info = yf.Ticker(ticker).info
         return {
@@ -135,14 +210,30 @@ def get_fundamental_health(ticker: str):
             "Market_Cap": info.get('marketCap', 'N/A'),
             "Analyst_Rec": info.get('recommendationKey', 'none').upper()
         }
-    except:
+    except Exception:
         return {"error": "Could not fetch fundamentals"}
 
-# --- 5. AGENT SETUP ---
+
+# ============================================================================
+# AI AGENT INITIALIZATION
+# ============================================================================
+
 def initialize_agent():
     """
-    Initialize the Gemini AI agent with tools.
-    Returns the chat instance.
+    Initialize the Google Gemini AI agent with multi-agent tools.
+    
+    Creates a GenerativeModel configured with:
+    - Model: gemini-2.0-flash
+    - Tools: ML prediction, technical analysis, fundamental analysis
+    - System instruction: Hedge Fund Manager persona
+    
+    Returns:
+        Chat: Initialized chat instance with automatic function calling enabled
+    
+    Note:
+        Requires GOOGLE_API_KEY to be set in environment variables.
+        The agent is configured to always run ML prediction first, then
+        combine all agent insights into trading recommendations.
     """
     tools = [get_ml_prediction, get_technical_analysis, get_fundamental_health]
     
@@ -160,16 +251,27 @@ def initialize_agent():
     return model.start_chat(enable_automatic_function_calling=True)
 
 
-def analyze_stock(ticker: str, chat_instance=None):
+def analyze_stock(ticker: str, chat_instance=None) -> str:
     """
-    Analyze a stock ticker and return the recommendation.
+    Analyze a stock using all agents and return AI-generated recommendation.
+    
+    This function orchestrates the multi-agent analysis by sending a request
+    to the Gemini AI agent, which automatically calls the ML, Technical, and
+    Fundamental agents, then synthesizes their outputs into a recommendation.
     
     Args:
-        ticker: Stock symbol to analyze
-        chat_instance: Optional chat instance (creates new one if not provided)
+        ticker (str): Stock ticker symbol to analyze (e.g., 'AAPL', 'MSFT')
+        chat_instance (Chat, optional): Pre-initialized chat instance.
+            If None, a new agent will be initialized. Defaults to None.
     
     Returns:
-        str: Analysis and recommendation text
+        str: AI-generated analysis and trading recommendation text.
+            Returns error message string if analysis fails.
+    
+    Example:
+        >>> chat = initialize_agent()
+        >>> recommendation = analyze_stock("AAPL", chat)
+        >>> print(recommendation)
     """
     if chat_instance is None:
         chat_instance = initialize_agent()
@@ -181,8 +283,24 @@ def analyze_stock(ticker: str, chat_instance=None):
         return f"Agent Error: {str(e)}"
 
 
-# --- 6. Streamlit UI MODE (Original) ---
+# ============================================================================
+# Streamlit UI Mode
+# ============================================================================
+
 if __name__ == "__main__":
+    """
+    Main entry point for CLI mode.
+    
+    Runs an interactive command-line interface where users can enter
+    stock tickers to get AI-powered analysis and recommendations.
+    
+    Usage:
+        python multi-agent-stock-analyst.py
+    
+    Commands:
+        - Enter stock ticker: Analyzes the stock and displays recommendation
+        - 'quit': Exits the application
+    """
     print("\n🤖 AI Agent Online. Internet check: " + ("PASSED" if "yfinance" in sys.modules else "FAILED"))
     chat = initialize_agent()
     
