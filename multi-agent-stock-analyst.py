@@ -17,7 +17,7 @@ Usage:
     UI Mode: streamlit run app.py
 
 Requirements:
-    - GOOGLE_API_KEY in .env file
+    - GOOGLE_API_KEY (entered via UI or environment variable)
     - Internet connection for data fetching
 """
 
@@ -37,23 +37,8 @@ else:
 import pandas as pd
 import numpy as np
 import google.generativeai as genai
-from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-
-# Load environment variables from .env file
-load_dotenv()
-
-# Configure Google Generative AI with API key from environment
-try:
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY not found in environment variables")
-    genai.configure(api_key=api_key)
-    print("✅ API Key loaded successfully from .env file")
-except Exception as e:
-    print(f"⚠️ WARNING: API Key missing. Please add 'GOOGLE_API_KEY' to your .env file.")
-    print(f"   Error: {str(e)}")
 
 
 # ============================================================================
@@ -218,7 +203,7 @@ def get_fundamental_health(ticker: str) -> dict:
 # AI AGENT INITIALIZATION
 # ============================================================================
 
-def initialize_agent():
+def initialize_agent(api_key: str):
     """
     Initialize the Google Gemini AI agent with multi-agent tools.
     
@@ -227,14 +212,26 @@ def initialize_agent():
     - Tools: ML prediction, technical analysis, fundamental analysis
     - System instruction: Hedge Fund Manager persona
     
+    Args:
+        api_key (str): Google Generative AI API key
+    
     Returns:
         Chat: Initialized chat instance with automatic function calling enabled
     
+    Raises:
+        ValueError: If API key is empty or None
+        Exception: If API key is invalid or configuration fails
+    
     Note:
-        Requires GOOGLE_API_KEY to be set in environment variables.
         The agent is configured to always run ML prediction first, then
         combine all agent insights into trading recommendations.
     """
+    if not api_key or not api_key.strip():
+        raise ValueError("API key is required. Please provide a valid Google API key.")
+    
+    # Configure Google Generative AI with the provided API key
+    genai.configure(api_key=api_key.strip())
+    
     tools = [get_ml_prediction, get_technical_analysis, get_fundamental_health]
     
     model = genai.GenerativeModel(
@@ -251,7 +248,7 @@ def initialize_agent():
     return model.start_chat(enable_automatic_function_calling=True)
 
 
-def analyze_stock(ticker: str, chat_instance=None) -> str:
+def analyze_stock(ticker: str, chat_instance=None, api_key: str = None) -> str:
     """
     Analyze a stock using all agents and return AI-generated recommendation.
     
@@ -262,19 +259,23 @@ def analyze_stock(ticker: str, chat_instance=None) -> str:
     Args:
         ticker (str): Stock ticker symbol to analyze (e.g., 'AAPL', 'MSFT')
         chat_instance (Chat, optional): Pre-initialized chat instance.
-            If None, a new agent will be initialized. Defaults to None.
+            If None, a new agent will be initialized using api_key. Defaults to None.
+        api_key (str, optional): Google API key. Required if chat_instance is None.
+            Defaults to None.
     
     Returns:
         str: AI-generated analysis and trading recommendation text.
             Returns error message string if analysis fails.
     
     Example:
-        >>> chat = initialize_agent()
+        >>> chat = initialize_agent("your-api-key")
         >>> recommendation = analyze_stock("AAPL", chat)
         >>> print(recommendation)
     """
     if chat_instance is None:
-        chat_instance = initialize_agent()
+        if not api_key:
+            return "Error: API key is required to initialize the agent."
+        chat_instance = initialize_agent(api_key)
     
     try:
         response = chat_instance.send_message(f"Analyze {ticker}")
@@ -301,11 +302,27 @@ if __name__ == "__main__":
         - Enter stock ticker: Analyzes the stock and displays recommendation
         - 'quit': Exits the application
     """
-    print("\n🤖 AI Agent Online. Internet check: " + ("PASSED" if "yfinance" in sys.modules else "FAILED"))
-    chat = initialize_agent()
+    print("\n🤖 Multi-Agent Stock Analyst - CLI Mode")
+    print("Internet check: " + ("PASSED" if "yfinance" in sys.modules else "FAILED"))
+    
+    # Get API key from user or environment
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        api_key = input("\nEnter your Google API Key (or set GOOGLE_API_KEY env var): ").strip()
+        if not api_key:
+            print("❌ API key is required. Exiting.")
+            sys.exit(1)
+    
+    try:
+        print("Initializing AI Agent...")
+        chat = initialize_agent(api_key)
+        print("✅ AI Agent Online\n")
+    except Exception as e:
+        print(f"❌ Failed to initialize agent: {str(e)}")
+        sys.exit(1)
     
     while True:
-        user_input = input("\nStock Ticker (or 'quit'): ")
+        user_input = input("Stock Ticker (or 'quit'): ")
         if user_input.lower() == "quit":
             break
         

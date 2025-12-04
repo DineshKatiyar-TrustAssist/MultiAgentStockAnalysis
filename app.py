@@ -18,7 +18,7 @@ Features:
 
 Requirements:
     - Streamlit must be installed (pip install streamlit)
-    - GOOGLE_API_KEY must be set in .env file
+    - Google API Key (entered via UI)
     - All dependencies from requirements.txt
 """
 
@@ -54,14 +54,47 @@ st.set_page_config(
 st.title("🤖 Multi-Agent Stock Analyst")
 st.markdown("**AI-Powered Stock Analysis using ML, Technical, and Fundamental Analysis**")
 
-# Initialize AI agent in session state (persists across reruns)
-if 'chat' not in st.session_state:
-    with st.spinner("Initializing AI Agent..."):
-        st.session_state.chat = initialize_agent()
-    st.success("✅ AI Agent Online")
-
 # Sidebar for input
 with st.sidebar:
+    st.header("🔑 Configuration")
+    
+    # API Key input
+    api_key_input = st.text_input(
+        "Google API Key",
+        type="password",
+        placeholder="Enter your Google API key",
+        help="Get your API key from https://makersuite.google.com/app/apikey",
+        value=st.session_state.get('api_key', '')
+    )
+    
+    # Store API key in session state
+    if api_key_input:
+        st.session_state.api_key = api_key_input
+        # Reset chat if API key changes
+        if 'previous_api_key' not in st.session_state or st.session_state.previous_api_key != api_key_input:
+            if 'chat' in st.session_state:
+                del st.session_state.chat
+            st.session_state.previous_api_key = api_key_input
+    
+    # Initialize or reinitialize agent when API key is provided
+    if api_key_input and api_key_input.strip():
+        if 'chat' not in st.session_state:
+            try:
+                with st.spinner("Initializing AI Agent..."):
+                    st.session_state.chat = initialize_agent(api_key_input.strip())
+                st.success("✅ AI Agent Online")
+            except Exception as e:
+                st.error(f"❌ Failed to initialize agent: {str(e)}")
+                if 'chat' in st.session_state:
+                    del st.session_state.chat
+        else:
+            st.success("✅ AI Agent Ready")
+    else:
+        st.warning("⚠️ Please enter your Google API key to continue")
+        if 'chat' in st.session_state:
+            del st.session_state.chat
+    
+    st.markdown("---")
     st.header("📊 Stock Analysis")
     ticker_input = st.text_input(
         "Enter Stock Symbol",
@@ -85,6 +118,8 @@ if analyze_button and ticker_input:
     
     if not ticker:
         st.warning("⚠️ Please enter a stock symbol")
+    elif 'chat' not in st.session_state or 'api_key' not in st.session_state or not st.session_state.api_key:
+        st.error("❌ Please enter your Google API key in the sidebar first")
     else:
         # Perform analysis with loading indicator
         with st.spinner(f"🔍 Analyzing {ticker}... This may take a moment."):
@@ -132,7 +167,10 @@ if analyze_button and ticker_input:
                 st.error(f"❌ Error analyzing {ticker}: {str(e)}")
 
 elif analyze_button:
-    st.warning("⚠️ Please enter a stock symbol before clicking Analyze")
+    if 'chat' not in st.session_state or 'api_key' not in st.session_state or not st.session_state.api_key:
+        st.error("❌ Please enter your Google API key in the sidebar first")
+    else:
+        st.warning("⚠️ Please enter a stock symbol before clicking Analyze")
 
 # Footer
 st.markdown("---")

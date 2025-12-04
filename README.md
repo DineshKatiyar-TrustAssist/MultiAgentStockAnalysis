@@ -9,7 +9,7 @@ An AI-powered stock analysis system that combines Machine Learning, Technical An
 - **💼 Fundamental Agent**: Analyzes PE ratio, market cap, and analyst recommendations
 - **🧠 AI Manager**: Google Gemini AI combines insights from all agents to generate trading recommendations
 - **🖥️ Web UI**: Beautiful Streamlit interface for easy interaction
-- **⌨️ CLI Mode**: Command-line interface for quick analysis
+- **⌨️ Streamlit UI Mode**: Command-line interface for quick analysis
 
 ## 🏗️ Architecture
 
@@ -24,8 +24,11 @@ The system uses a multi-agent architecture where specialized agents work togethe
 
 - Python 3.8 or higher
 - Google Generative AI API key ([Get one here](https://makersuite.google.com/app/apikey))
+  - **Note**: The API key is entered directly in the UI (no .env file needed)
 
 ## 🚀 Installation
+
+### Local Development
 
 1. **Clone the repository** (or navigate to the project directory):
    ```bash
@@ -37,19 +40,24 @@ The system uses a multi-agent architecture where specialized agents work togethe
    pip install -r requirements.txt
    ```
 
-3. **Set up environment variables**:
-   
-   Create a `.env` file in the project root:
-   ```bash
-   touch .env
-   ```
-   
-   Add your Google API key to the `.env` file:
-   ```
-   GOOGLE_API_KEY=your_api_key_here
-   ```
-   
-   > ⚠️ **Important**: Never commit your `.env` file to version control. Add it to `.gitignore`.
+3. **Get your Google API Key**:
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create an API key
+   - You'll enter this key in the UI when you run the application
+   - **Note**: No .env file is needed - the API key is entered directly in the web interface
+
+### Docker Deployment
+
+The application can be deployed using Docker. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed GCP deployment instructions.
+
+**Quick Docker test:**
+```bash
+# Build the image
+docker build -t multi-agent-stock-analyst:local .
+
+# Run the container
+docker run -p 8501:8501 -e GOOGLE_API_KEY=your-api-key multi-agent-stock-analyst:local
+```
 
 ## 🎯 Usage
 
@@ -64,6 +72,7 @@ streamlit run app.py
 The application will open in your browser at `http://localhost:8501`.
 
 **Features:**
+- Enter your Google API key in the sidebar (password field for security)
 - Enter stock symbol in the sidebar
 - Click "Analyze Stock" to get AI-powered recommendations
 - View detailed data from all three agents in an expandable section
@@ -78,12 +87,17 @@ python multi-agent-stock-analyst.py
 ```
 
 **Usage:**
+- Enter your Google API key when prompted (or set `GOOGLE_API_KEY` environment variable)
 - Enter a stock ticker symbol when prompted (e.g., `AAPL`, `MSFT`, `GOOGL`)
 - Type `quit` to exit
 
 **Example:**
 ```
-🤖 AI Agent Online. Internet check: PASSED
+🤖 Multi-Agent Stock Analyst - CLI Mode
+Internet check: PASSED
+Enter your Google API Key (or set GOOGLE_API_KEY env var): [your-key]
+Initializing AI Agent...
+✅ AI Agent Online
 
 Stock Ticker (or 'quit'): AAPL
 🤖 Quant Agent: Fetching data for AAPL...
@@ -98,6 +112,10 @@ MultiAgentStockAnalysis/
 ├── multi-agent-stock-analyst.py  # Main analysis engine with agent functions
 ├── app.py                        # Streamlit web UI
 ├── requirements.txt              # Python dependencies
+├── Dockerfile                    # Docker configuration for deployment
+├── .dockerignore                 # Files to exclude from Docker build
+├── cloudbuild.yaml              # GCP Cloud Build configuration
+├── DEPLOYMENT.md                 # GCP deployment guide
 ├── .env                          # Environment variables (create this)
 └── README.md                     # This file
 ```
@@ -114,20 +132,18 @@ MultiAgentStockAnalysis/
 
 ## 🔧 Configuration
 
-### Environment Variables
+### API Key Setup
 
-The application requires a `.env` file with the following variable:
-
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-```
-
-### Getting a Google API Key
+The application requires a Google Generative AI API key, which is entered directly in the UI:
 
 1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Sign in with your Google account
 3. Click "Create API Key"
-4. Copy the key and add it to your `.env` file
+4. Copy the key
+5. **For UI Mode**: Enter the key in the sidebar when you run the application
+6. **For CLI Mode**: Enter the key when prompted, or set `GOOGLE_API_KEY` environment variable
+
+> **Note**: The API key is stored in session state (UI) or memory (CLI) and is never saved to disk for security.
 
 ## 📊 Example Analysis
 
