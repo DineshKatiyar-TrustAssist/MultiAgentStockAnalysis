@@ -1,0 +1,58 @@
+# Cloud Build configuration for GCP deployment
+# This file is used by Google Cloud Build to build and deploy the container
+
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:$SHORT_SHA', '-t', 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:latest', '.']
+    id: 'build-image'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:$SHORT_SHA']
+    id: 'push-image-sha'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:latest']
+    id: 'push-image-latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'multi-agent-stock-analyst'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:$SHORT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8501'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'GOOGLE_API_KEY=${_GOOGLE_API_KEY},APP_BASE_URL=${_APP_BASE_URL}'
+    id: 'deploy-cloud-run'
+
+images:
+  - 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/multi-agent-stock-analyst:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _GOOGLE_API_KEY: 'your-google-api-key-here'  # Set this in Cloud Build triggers or use Secret Manager
+  _APP_BASE_URL: 'https://your-service-url.run.app'  # Set your Cloud Run service URL
+

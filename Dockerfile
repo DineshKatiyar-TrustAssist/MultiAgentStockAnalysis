@@ -30,6 +30,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application files
 COPY app.py .
 COPY multi-agent-stock-analyst.py .
+COPY auth.py .
+COPY config.py .
+COPY email_templates.py .
+
+# Copy pages directory
+COPY pages/ ./pages/
 
 # Create non-root user for security
 RUN useradd -m -u 1000 streamlit && \
@@ -41,10 +47,9 @@ USER streamlit
 # Expose Streamlit port
 EXPOSE 8501
 
-# Health check (Cloud Run has its own health checks, but this is useful for local testing)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import socket; s=socket.socket(); s.connect(('localhost', 8501)); s.close()" || exit 1
 
 # Run Streamlit app
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-

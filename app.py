@@ -15,6 +15,7 @@ Features:
     - Real-time AI-powered analysis
     - Detailed agent data visualization
     - Clean, responsive UI design
+    - User authentication and session management
 
 Requirements:
     - Streamlit must be installed (pip install streamlit)
@@ -47,15 +48,42 @@ from stock_analyst import (
 st.set_page_config(
     page_title="Multi-Agent Stock Analyst",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
+
+# Hide the sidebar page navigation
+st.markdown("""
+<style>
+    [data-testid="stSidebarNav"] {
+        display: none;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Authentication check - redirect to signin immediately if not authenticated
+if 'authenticated' not in st.session_state or not st.session_state.authenticated:
+    st.switch_page("pages/signin.py")
 
 # Page header
 st.title("🤖 Multi-Agent Stock Analyst")
 st.markdown("**AI-Powered Stock Analysis using ML, Technical, and Fundamental Analysis**")
 
-# Sidebar for input
+# User info and logout in sidebar
 with st.sidebar:
+    st.header("👤 Account")
+    if 'user_email' in st.session_state:
+        st.info(f"Signed in as: **{st.session_state.user_email}**")
+    
+    if st.button("🚪 Logout", use_container_width=True):
+        # Clear session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.success("Logged out successfully!")
+        st.rerun()
+    
+    st.markdown("---")
+
     st.header("🔑 Configuration")
     
     # API Key input
